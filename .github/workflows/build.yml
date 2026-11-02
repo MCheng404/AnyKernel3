@@ -1611,6 +1611,7 @@ jobs:
             cat >> "$KSU_KCONFIG" << 'EOF'
 
           config KSU_SUSFS_PRIORITY_UID_FILTER
+            bool "SUSFS: enable priority UID filter"
             depends on KSU_SUSFS
           EOF
             echo "已补入 KSU_SUSFS_PRIORITY_UID_FILTER Kconfig 定义: $KSU_KCONFIG"
