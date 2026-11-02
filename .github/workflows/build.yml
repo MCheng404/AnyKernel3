@@ -1602,6 +1602,23 @@ jobs:
       - name: 添加 SUSFS 配置
         if: inputs.enable_susfs
         run: |
+          # SukiSU-Ultra v4.3.0 的 kernel/Kconfig 缺失 KSU_SUSFS_PRIORITY_UID_FILTER 定义，
+          # 不补定义会被 olddefconfig 静默丢弃；susfs.c 中该功能块（#ifdef 包裹）被裁剪后，
+          # dispatch.c/pkg_observer.c 报未声明函数、susfs.c 报未使用函数，导致编译失败。
+          KSU_KCONFIG="$KERNEL_ROOT/common/drivers/kernelsu/Kconfig"
+          [ -f "$KSU_KCONFIG" ] || KSU_KCONFIG="$KERNEL_ROOT/KernelSU/kernel/Kconfig"
+          if [ -f "$KSU_KCONFIG" ] && ! grep -q '^config KSU_SUSFS_PRIORITY_UID_FILTER$' "$KSU_KCONFIG"; then
+            cat >> "$KSU_KCONFIG" << 'EOF'
+
+          config KSU_SUSFS_PRIORITY_UID_FILTER
+            depends on KSU_SUSFS
+          EOF
+            echo "已补入 KSU_SUSFS_PRIORITY_UID_FILTER Kconfig 定义: $KSU_KCONFIG"
+          elif [ ! -f "$KSU_KCONFIG" ]; then
+            echo "::warning::未找到 KernelSU Kconfig，无法补入 PRIORITY_UID_FILTER 定义"
+          else
+            echo "KSU_SUSFS_PRIORITY_UID_FILTER Kconfig 定义已存在，跳过"
+          fi
           cat >> "$DEFCONFIG" << 'EOF'
           CONFIG_KSU_SUSFS=y
           CONFIG_KSU_SUSFS_SUS_PATH=y
@@ -1613,6 +1630,7 @@ jobs:
           CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
           CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
           CONFIG_KSU_SUSFS_SUS_MAP=y
+          CONFIG_KSU_SUSFS_PRIORITY_UID_FILTER=y
           EOF
 
       - name: 配置内核名称
