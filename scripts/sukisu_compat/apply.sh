@@ -162,4 +162,12 @@ else:
 PY
 fi
 
+# SUSFS v2.3.0 新增 Priority UID Filter；旧 SukiSU Kconfig 未声明选项。
+# 只补齐 Kconfig 定义，不修改 SukiSU 上游 C 源码。
+KSU_KCONFIG="$KSU_DIR/kernel/Kconfig"
+if [ -f "$KSU_KCONFIG" ] && ! grep -qF "config KSU_SUSFS_PRIORITY_UID_FILTER" "$KSU_KCONFIG"; then
+  python3 "$COMPAT_DIR/priority_kconfig.py" "$KSU_KCONFIG" \
+    || fail "SukiSU Kconfig Priority UID Filter 补丁失败"
+fi
+
 echo "SukiSU API 兼容补丁处理完成"
