@@ -1781,6 +1781,22 @@ jobs:
               sed -i '/MODULES_ORDER=android\/gki_aarch64_modules/d' ./common/build.config.gki.aarch64
               sed -i '/KMI_SYMBOL_LIST_STRICT_MODE/d' ./common/build.config.gki.aarch64
 
+              # 绕过模块 ABI 版本校验（参考 WildKernels bypass-kernel）
+              # 让 check_version 的 bad_version 分支返回 1，忽略 vendor DLKM 的 CRC 不匹配
+              if [ -f "./common/kernel/module/version.c" ]; then
+                sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' ./common/kernel/module/version.c
+                grep -A 5 "bad_version:" ./common/kernel/module/version.c | grep -q "return 1;" \
+                  && echo "module version-check bypass applied (version.c)" \
+                  || { echo "bypass patch failed on version.c"; exit 1; }
+              elif [ -f "./common/kernel/module.c" ]; then
+                sed -i '/bad_version:/{:a;n;/return 0;/{s/return 0;/return 1;/;b};ba}' ./common/kernel/module.c
+                grep -A 5 "bad_version:" ./common/kernel/module.c | grep -q "return 1;" \
+                  && echo "module version-check bypass applied (module.c)" \
+                  || { echo "bypass patch failed on module.c"; exit 1; }
+              else
+                echo "no module version-check source found"; exit 1
+              fi
+
               if [ -f "build/build.sh" ]; then
                 LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 build/build.sh CC="/usr/bin/ccache clang" || exit 1
                 strings "out/${{ inputs.android_version }}-${{ inputs.kernel_version }}/dist/Image" | grep 'Linux version'
